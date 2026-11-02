@@ -28,3 +28,43 @@ console.log("Количество задач в индивидуальном н�
 
 // TODO: показать хотя бы одну обработанную ошибку и неизменность исходных данных.
 // Для удобного вывода объектов допустимо использовать console.table().
+
+function showStats(tasks) {
+  const { total, completed, pending, progress } = getTaskStats(tasks);
+  console.log(`Всего: ${total}; выполнено: ${completed}; осталось: ${pending}`);
+  if (total === 0) {
+    console.log("Задач пока нет");
+  } else {
+    console.log(`Прогресс: ${progress.toFixed(1)}%`);
+  }
+}
+
+let current = demoTasks;
+
+console.log("Исходные задачи:", current);
+console.log("Названия:", getTaskTitles(current));
+console.log("Невыполненные:", getPendingTasks(current));
+showStats(current);
+
+let result = addTask(current, 20, "Добавить проверку", "high");
+if (result.ok) current = result.tasks; else console.error(result.error);
+showStats(current);
+
+result = setTaskCompleted(current, 4, true);
+if (result.ok) current = result.tasks; else console.error(result.error);
+showStats(current);
+
+result = renameTask(current, 10, "Подготовить инструкцию запуска");
+if (result.ok) current = result.tasks; else console.error(result.error);
+showStats(current);
+
+result = removeTask(current, 7);
+if (result.ok) current = result.tasks; else console.error(result.error);
+showStats(current);
+
+// демонстрация отказа: повторяющийся id
+result = addTask(current, 20, "Дубль", "low");
+if (!result.ok) console.error(`Ожидаемая ошибка: ${result.error}`);
+
+// доказательство сохранности исходного набора
+console.log("demoTasks не изменился:", demoTasks);
