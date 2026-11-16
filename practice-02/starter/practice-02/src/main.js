@@ -1,7 +1,5 @@
 import { demoTasks, variantNumber, variantTasks } from "./data.js";
 import {
-  createTask,
-  findTaskById,
   getPendingTasks,
   getTaskTitles,
   getTaskStats,
@@ -10,24 +8,6 @@ import {
   renameTask,
   removeTask,
 } from "./task-service.js";
-
-console.log("ПР2. Заготовка демонстрационного сценария");
-console.log("Количество задач в общем наборе:", demoTasks.length);
-console.log("Номер варианта:", variantNumber);
-console.log("Количество задач в индивидуальном наборе:", variantTasks.length);
-
-// TODO: после реализации функций выполнить общий сценарий из раздела 6.5.
-// Текущее состояние хранится в локальной переменной:
-// let currentTasks = demoTasks;
-// После успешной операции currentTasks получает result.tasks.
-// При result.ok === false необходимо вывести ошибку, не заменяя состояние.
-// Сводка выводится после каждого этапа; вычисления выполняются в task-service.js.
-
-// TODO: выполнить отдельный сценарий для variantTasks по разделу 7.
-// Общий набор demoTasks не заменяется данными варианта.
-
-// TODO: показать хотя бы одну обработанную ошибку и неизменность исходных данных.
-// Для удобного вывода объектов допустимо использовать console.table().
 
 function showStats(tasks) {
   const { total, completed, pending, progress } = getTaskStats(tasks);
@@ -39,32 +19,112 @@ function showStats(tasks) {
   }
 }
 
+function showTasks(tasks) {
+  console.table(tasks);
+}
+
+function applyOperation(label, currentTasks, operation) {
+  console.log(`\n${label}`);
+  const result = operation(currentTasks);
+
+  if (!result.ok) {
+    console.error(`Ожидаемый отказ: ${result.error}`);
+    console.log("Список после отказа не изменился:", currentTasks);
+    return currentTasks;
+  }
+
+  showTasks(result.tasks);
+  showStats(result.tasks);
+  return result.tasks;
+}
+
+console.log("========== ОБЩИЙ НАБОР ==========");
 let current = demoTasks;
 
-console.log("Исходные задачи:", current);
+console.log("Исходные задачи:");
+showTasks(current);
 console.log("Названия:", getTaskTitles(current));
-console.log("Невыполненные:", getPendingTasks(current));
+console.log("Невыполненные задачи:");
+showTasks(getPendingTasks(current));
 showStats(current);
 
-let result = addTask(current, 20, "Добавить проверку", "high");
-if (result.ok) current = result.tasks; else console.error(result.error);
+current = applyOperation("1. Добавление задачи id = 20", current,
+  (tasks) => addTask(tasks, 20, "Добавить проверку", "high"));
+current = applyOperation("2. Выполнение задачи id = 4", current,
+  (tasks) => setTaskCompleted(tasks, 4, true));
+current = applyOperation("3. Переименование задачи id = 10", current,
+  (tasks) => renameTask(tasks, 10, "Подготовить инструкцию запуска"));
+current = applyOperation("4. Удаление задачи id = 7", current,
+  (tasks) => removeTask(tasks, 7));
+
+console.log("5. Проверка отказа: повторное добавление id = 20");
+const beforeDuplicate = current;
+const duplicateResult = addTask(current, 20, "Дубликат", "low");
+if (!duplicateResult.ok) {
+  console.error(`Ожидаемая ошибка: ${duplicateResult.error}`);
+}
+console.log("Текущий массив сохранён:", current === beforeDuplicate);
+console.log("Итоговый общий список:");
+showTasks(current);
 showStats(current);
+console.log("Исходный demoTasks не изменился:");
+showTasks(demoTasks);
 
-result = setTaskCompleted(current, 4, true);
-if (result.ok) current = result.tasks; else console.error(result.error);
-showStats(current);
+console.log("\n========== ИНДИВИДУАЛЬНЫЙ НАБОР ==========");
+console.log("Номер варианта:", variantNumber);
+let currentVariantTasks = variantTasks;
+const originalVariantSnapshot = variantTasks.map((task) => ({ ...task }));
 
-result = renameTask(current, 10, "Подготовить инструкцию запуска");
-if (result.ok) current = result.tasks; else console.error(result.error);
-showStats(current);
+console.log("Исходные индивидуальные задачи:");
+showTasks(currentVariantTasks);
+console.log("Названия:", getTaskTitles(currentVariantTasks));
+console.log("Невыполненные задачи:");
+showTasks(getPendingTasks(currentVariantTasks));
+showStats(currentVariantTasks);
 
-result = removeTask(current, 7);
-if (result.ok) current = result.tasks; else console.error(result.error);
-showStats(current);
+currentVariantTasks = applyOperation(
+  '1. Добавление задачи id = 80',
+  currentVariantTasks,
+  (tasks) => addTask(tasks, 80, "Подготовить конфигурацию релиза", "high"),
+);
 
-// демонстрация отказа: повторяющийся id
-result = addTask(current, 20, "Дубль", "low");
-if (!result.ok) console.error(`Ожидаемая ошибка: ${result.error}`);
+currentVariantTasks = applyOperation(
+  "2. Установка completed = true для id = 11",
+  currentVariantTasks,
+  (tasks) => setTaskCompleted(tasks, 11, true),
+);
 
-// доказательство сохранности исходного набора
-console.log("demoTasks не изменился:", demoTasks);
+currentVariantTasks = applyOperation(
+  "3. Переименование задачи id = 23",
+  currentVariantTasks,
+  (tasks) => renameTask(tasks, 23, "Настроить и проверить линтер"),
+);
+
+currentVariantTasks = applyOperation(
+  "4. Удаление задачи id = 37",
+  currentVariantTasks,
+  (tasks) => removeTask(tasks, 37),
+);
+
+console.log("5. Проверка отказа: повторное добавление id = 80");
+const beforeVariantDuplicate = currentVariantTasks;
+const variantDuplicateResult = addTask(
+  currentVariantTasks,
+  80,
+  "Повторная задача",
+  "medium",
+);
+if (!variantDuplicateResult.ok) {
+  console.error(`Ожидаемая ошибка: ${variantDuplicateResult.error}`);
+}
+console.log("Список после отказа не изменился:", currentVariantTasks === beforeVariantDuplicate);
+
+console.log("Итоговые индивидуальные задачи:");
+showTasks(currentVariantTasks);
+showStats(currentVariantTasks);
+console.log(
+  "Исходный variantTasks не изменился:",
+  JSON.stringify(variantTasks) === JSON.stringify(originalVariantSnapshot),
+);
+console.log("Исходный variantTasks:");
+showTasks(variantTasks);

@@ -1,11 +1,10 @@
-// Готовый проверочный сценарий. Установка пакетов не требуется.
-// В этом файле нет реализации функций task-service.js.
-// Первоначально проверки не проходят: функции в заготовке ещё не реализованы.
+
 import assert from "node:assert/strict";
 import {
   createTask, findTaskById, getPendingTasks, getTaskTitles, getTaskStats,
   addTask, setTaskCompleted, renameTask, removeTask,
 } from "./src/task-service.js";
+import { variantTasks } from "./src/data.js";
 
 let passed = 0;
 let failed = 0;
@@ -22,7 +21,6 @@ function check(name, action) {
   }
 }
 
-// Каждый вызов создаёт новый независимый набор данных.
 function fixture() {
   return [
     { id: 1, title: "Изучить функции", completed: true, priority: "medium" },
@@ -291,7 +289,6 @@ check("32. Некорректный, отсутствующий id и удале
 });
 
 check("33. Входные объекты не изменяются ни одной операцией", () => {
-  // Замораживание здесь — инструмент проверки, а не часть прикладной модели.
   const tasks = Object.freeze(fixture().map((task) => Object.freeze(task)));
   assert.equal(findTaskById(tasks, 4), tasks[1]);
   assert.equal(getPendingTasks(tasks).length, 2);
@@ -347,13 +344,54 @@ check("35. Работа с другим набором, без зависимо�
   assert.deepEqual(tasks, before);
 });
 
-// Три собственных проверки можно добавить здесь, до итогового вывода,
-// либо выполнить отдельно и описать в отчёте. Общие проверки удалять не нужно.
-// Пример формы записи (не готовая проверка задания):
-// check("Собственный случай: ...", () => {
-//   const result = ...;
-//   assert.deepEqual(result, ...);
-// });
+check("36. Собственный случай: добавление после удаления", () => {
+  const tasks = fixture();
+  const before = copyTasks(tasks);
+  const withoutSeven = expectTasks(removeTask(tasks, 7));
+  const next = expectTasks(addTask(withoutSeven, 80, "Новая задача после удаления", "medium"));
+
+  assert.deepEqual(withoutSeven.map((task) => task.id), [1, 4, 10]);
+  assert.deepEqual(next.map((task) => task.id), [1, 4, 10, 80]);
+  assert.equal(next[3].completed, false);
+  assert.deepEqual(tasks, before);
+});
+
+check("37. Собственный случай: последовательное изменение первой и последней задач", () => {
+  const tasks = fixture();
+  const before = copyTasks(tasks);
+  const afterRename = expectTasks(renameTask(tasks, 1, "Обновлённое первое задание"));
+  const afterStatus = expectTasks(setTaskCompleted(afterRename, 10, false));
+
+  assert.equal(afterStatus[0].title, "Обновлённое первое задание");
+  assert.equal(afterStatus[0].completed, true);
+  assert.equal(afterStatus[3].completed, false);
+  assert.equal(afterStatus[3].title, "Оформить README");
+  assert.notEqual(afterRename[3], afterStatus[3]);
+  assert.deepEqual(afterRename[3], tasks[3]);
+  assert.deepEqual(tasks, before);
+});
+
+check("38. Собственный случай: полный индивидуальный сценарий варианта из data.js", () => {
+  const before = copyTasks(variantTasks);
+  let current = variantTasks;
+
+  current = expectTasks(addTask(current, 80, "Подготовить конфигурацию релиза", "high"));
+  current = expectTasks(setTaskCompleted(current, 11, true));
+  current = expectTasks(renameTask(current, 23, "Настроить и проверить линтер"));
+  current = expectTasks(removeTask(current, 37));
+
+  expectFailure(addTask(current, 80, "Повторная задача", "medium"));
+  assert.deepEqual(current.map((task) => task.id), [11, 23, 41, 58, 64, 80]);
+  assert.equal(current[0].completed, true);
+  assert.equal(current[0].priority, "high");
+  assert.equal(current[1].title, "Настроить и проверить линтер");
+  const stats = getTaskStats(current);
+  assert.equal(stats.total, 6);
+  assert.equal(stats.completed, 1);
+  assert.equal(stats.pending, 5);
+  assert.ok(Math.abs(stats.progress - (100 / 6)) < 1e-10);
+  assert.deepEqual(variantTasks, before);
+});
 
 console.log(`\nПроверок пройдено: ${passed}; не пройдено: ${failed}.`);
 if (failed > 0) {

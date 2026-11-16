@@ -39,8 +39,6 @@ function progress(totalTasks, completedTasks) {
 	}
 }
 
-progress(12,5);
-console.log(`--------------`);
-progress(0,0);
-console.log(`--------------`);
+//progress(12,5);
+//progress(0,0);
 progress(5,6);
