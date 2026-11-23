@@ -7,10 +7,12 @@ const initialItems = list.querySelectorAll("li");
 let counter = 1;
 let eventNumber = 0;
 
-console.log("Отсутствующий элемент:", document.querySelector("#absent"));
-console.log("Пустая коллекция:", document.querySelectorAll(".absent").length);
+const missing = document.querySelector("#absent");
+const emptyCollection = document.querySelectorAll(".absent");
+console.log("Отсутствующий элемент:", missing);
+console.log("Пустая коллекция:", emptyCollection.length);
 console.log("dataset.taskId:", button.dataset.taskId, typeof button.dataset.taskId);
-console.log("Числовой id:", Number(button.dataset.taskId));
+console.log("Числовой id:", Number(button.dataset.taskId), typeof Number(button.dataset.taskId));
 console.log("Исходная длина NodeList:", initialItems.length);
 
 function record(event) {
@@ -20,6 +22,7 @@ function record(event) {
   console.log(entry);
   log.textContent += `\n${entry}`;
 }
+
 card.addEventListener("click", record, { capture: true });
 button.addEventListener("click", (event) => {
   record(event);
