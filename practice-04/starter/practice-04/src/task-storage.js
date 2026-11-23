@@ -1,29 +1,80 @@
 export const STORAGE_VERSION = 1;
 
-// Все функции принимают объект storage явно, чтобы их можно было проверить
-// без обращения к глобальному window.localStorage.
+const ALLOWED_PRIORITIES = new Set(["low", "medium", "high"]);
+
+function copyTasks(tasks) {
+  return tasks.map((task) => ({ ...task }));
+}
+
+function failure(error) {
+  return { ok: false, error };
+}
 
 export function isValidTaskList(value) {
-  // TODO: проверить массив задач, поля каждой задачи и уникальность id.
-  throw new Error("Не реализовано: isValidTaskList");
+  if (!Array.isArray(value)) return false;
+
+  const ids = new Set();
+  for (const task of value) {
+    if (task === null || typeof task !== "object" || Array.isArray(task)) return false;
+    if (!Number.isSafeInteger(task.id) || task.id <= 0 || ids.has(task.id)) return false;
+    if (typeof task.title !== "string") return false;
+    const title = task.title.trim();
+    if (title.length === 0 || title.length > 100 || title !== task.title) return false;
+    if (typeof task.completed !== "boolean") return false;
+    if (!ALLOWED_PRIORITIES.has(task.priority)) return false;
+    ids.add(task.id);
+  }
+  return true;
 }
 
 export function loadTasks(storage, key, fallbackTasks) {
-  // TODO: прочитать строку, разобрать объект { version, tasks }, проверить данные.
-  // Нет записи: { ok: true, source: "initial", tasks: копия fallbackTasks }.
-  // Есть корректная запись: { ok: true, source: "storage", tasks: новая копия }.
-  // Ошибка чтения, JSON или схемы: { ok: false, source: "fallback",
-  // tasks: копия fallbackTasks, error: "понятное сообщение" }.
-  throw new Error("Не реализовано: loadTasks");
+  const fallback = copyTasks(fallbackTasks);
+
+  try {
+    const raw = storage.getItem(key);
+    if (raw === null) {
+      return { ok: true, source: "initial", tasks: fallback };
+    }
+
+    const parsed = JSON.parse(raw);
+    if (
+      parsed === null
+      || typeof parsed !== "object"
+      || Array.isArray(parsed)
+      || parsed.version !== STORAGE_VERSION
+      || !isValidTaskList(parsed.tasks)
+    ) {
+      return failureWithFallback("Сохранённые данные имеют неизвестную версию или неверную структуру.", fallback);
+    }
+
+    return { ok: true, source: "storage", tasks: copyTasks(parsed.tasks) };
+  } catch (error) {
+    return failureWithFallback(`Не удалось прочитать сохранённые данные: ${error.message}`, fallback);
+  }
+}
+
+function failureWithFallback(error, fallback) {
+  return { ok: false, source: "fallback", tasks: fallback, error };
 }
 
 export function saveTasks(storage, key, tasks) {
-  // TODO: проверить задачи и сохранить JSON.stringify({ version, tasks }).
-  // Вернуть { ok: true } либо { ok: false, error: "..." }; исключение не выпускать.
-  throw new Error("Не реализовано: saveTasks");
+  if (!isValidTaskList(tasks)) {
+    return failure("Список задач не соответствует допустимой структуре и не был сохранён.");
+  }
+
+  try {
+    storage.setItem(key, JSON.stringify({ version: STORAGE_VERSION, tasks }));
+    return { ok: true };
+  } catch (error) {
+    return failure(`Не удалось сохранить данные: ${error.message}`);
+  }
 }
 
 export function removeSavedTasks(storage, key) {
-  // TODO: удалить только переданный ключ; вернуть результат и перехватить исключение.
-  throw new Error("Не реализовано: removeSavedTasks");
+  try {
+    storage.removeItem(key);
+    return { ok: true };
+  } catch (error) {
+    return failure(`Не удалось удалить сохранённые данные: ${error.message}`);
+  }
 }
